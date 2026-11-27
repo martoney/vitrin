@@ -1,5 +1,7 @@
 # Vitrin
 
+![Vitrin](docs/vitrin-sample.png)
+
 A Cinnamon extension that makes panels float as rounded bars, with an optional Molten Quartz background. User documentation is in [vitrin/README.md](vitrin/README.md).
 
 ## Layout
