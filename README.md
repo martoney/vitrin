@@ -1,6 +1,6 @@
 # Vitrin
 
-![Vitrin](docs/vitrin-sample.png)
+![Vitrin](vitrin/screenshot.png)
 
 A Cinnamon extension that makes panels float as rounded bars, with an optional Molten Quartz background. User documentation is in [vitrin/README.md](vitrin/README.md).
 
@@ -8,6 +8,10 @@ A Cinnamon extension that makes panels float as rounded bars, with an optional M
  * Lensing effect in Molten Quartz mode.
  * Automatically update glyph color when background content changes, to enhance readability.
  * High degree of customization. Change margins, corner rounding and lens shader effect to make it your own.
+
+Molten Quartz bends whatever is behind the bar, so it looks different over every backdrop:
+
+![Vitrin over a neon grid](docs/screenshot-neon.png)
 
 ## Development
 
@@ -17,6 +21,7 @@ make unit          # unit tests (Node 18+)
 make validate      # the official validate-spice script
 make integration   # virtual desktop tests
 make test          # all of the above except install
+make screenshot    # regenerate vitrin/screenshot.png and docs/screenshot-neon.png from a virtual desktop
 ```
 
 ## Integration tests
