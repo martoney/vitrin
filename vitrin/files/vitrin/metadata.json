@@ -1,0 +1,8 @@
+{
+    "uuid": "vitrin",
+    "name": "Vitrin",
+    "description": "Floating, rounded panels with an optional Molten Quartz background.",
+    "version": "0.1.0",
+    "url": "https://github.com/martoney/vitrin",
+    "cinnamon-version": ["6.6"]
+}

@@ -1,0 +1,219 @@
+{
+    "layout": {
+        "type": "layout",
+        "pages": ["page-appearance", "page-behaviour"],
+        "page-appearance": {
+            "type": "page",
+            "title": "Appearance",
+            "sections": ["section-shape", "section-background", "section-quartz", "section-highlight", "section-defaults"]
+        },
+        "page-behaviour": {
+            "type": "page",
+            "title": "Behaviour",
+            "sections": ["section-behaviour"]
+        },
+        "section-shape": {
+            "type": "section",
+            "title": "Panel",
+            "keys": ["gap", "side-margin", "inner-padding", "radius"]
+        },
+        "section-background": {
+            "type": "section",
+            "title": "Background",
+            "keys": ["background"]
+        },
+        "section-quartz": {
+            "type": "section",
+            "title": "Molten Quartz",
+            "dependency": "background=glass",
+            "keys": ["blur", "refraction", "lens-width", "fringe", "highlight", "frost", "vibrancy", "shadow", "adapt-glyphs", "glyph-shadow"]
+        },
+        "section-highlight": {
+            "type": "section",
+            "title": "Highlight",
+            "keys": ["highlight-radius", "highlight-color", "round-menu"]
+        },
+        "section-defaults": {
+            "type": "section",
+            "title": "Defaults",
+            "keys": ["restore-defaults"]
+        },
+        "section-behaviour": {
+            "type": "section",
+            "title": "Behaviour",
+            "keys": ["edge-buttons", "instant-hide"]
+        }
+    },
+    "gap": {
+        "type": "spinbutton",
+        "default": 10,
+        "min": 0,
+        "max": 64,
+        "step": 1,
+        "units": "px",
+        "description": "Gap to the screen edge",
+        "tooltip": "Space between the panel and the edge of the screen it is attached to"
+    },
+    "side-margin": {
+        "type": "spinbutton",
+        "default": 10,
+        "min": 0,
+        "max": 2000,
+        "step": 1,
+        "units": "px",
+        "description": "Side margins",
+        "tooltip": "Space between the ends of the panel and the sides of the screen"
+    },
+    "inner-padding": {
+        "type": "spinbutton",
+        "default": 3,
+        "min": 0,
+        "max": 16,
+        "step": 1,
+        "units": "px",
+        "description": "Inner padding",
+        "tooltip": "Space between the edge of the panel and its buttons. Adds to the panel's thickness; icons keep their size"
+    },
+    "radius": {
+        "type": "spinbutton",
+        "default": 25,
+        "min": 0,
+        "max": 64,
+        "step": 1,
+        "units": "px",
+        "description": "Corner radius"
+    },
+    "background": {
+        "type": "combobox",
+        "default": "glass",
+        "options": {
+            "Molten Quartz": "glass",
+            "Theme colour": "theme"
+        },
+        "description": "Panel background"
+    },
+    "blur": {
+        "type": "scale",
+        "default": 0.5,
+        "min": 0.0,
+        "max": 16.0,
+        "step": 0.5,
+        "description": "Blur",
+        "tooltip": "How much the content behind the panel is blurred"
+    },
+    "refraction": {
+        "type": "scale",
+        "default": 1.5,
+        "min": 0.0,
+        "max": 3.0,
+        "step": 0.05,
+        "description": "Edge refraction",
+        "tooltip": "How strongly the edges bend the content behind them"
+    },
+    "lens-width": {
+        "type": "spinbutton",
+        "default": 40,
+        "min": 1,
+        "max": 64,
+        "step": 1,
+        "units": "px",
+        "description": "Lens width",
+        "tooltip": "Width of the refracting band along the edges"
+    },
+    "fringe": {
+        "type": "scale",
+        "default": 0.3,
+        "min": 0.0,
+        "max": 1.0,
+        "step": 0.01,
+        "description": "Colour fringing",
+        "tooltip": "How far apart the red and blue channels are bent along the edges, relative to the edge refraction"
+    },
+    "highlight": {
+        "type": "scale",
+        "default": 0.4,
+        "min": 0.0,
+        "max": 1.0,
+        "step": 0.01,
+        "description": "Rim highlight"
+    },
+    "frost": {
+        "type": "scale",
+        "default": 0.04,
+        "min": 0.0,
+        "max": 0.5,
+        "step": 0.01,
+        "description": "Frost"
+    },
+    "vibrancy": {
+        "type": "scale",
+        "default": 1.15,
+        "min": 0.0,
+        "max": 2.0,
+        "step": 0.05,
+        "description": "Vibrancy",
+        "tooltip": "Colour saturation of the content behind the panel"
+    },
+    "adapt-glyphs": {
+        "type": "switch",
+        "default": true,
+        "description": "Adapt icons and text to the background",
+        "tooltip": "Turns text and symbolic icons dark over bright content, separately for the left, centre and right of the panel"
+    },
+    "glyph-shadow": {
+        "type": "scale",
+        "default": 0.4,
+        "min": 0.0,
+        "max": 1.0,
+        "step": 0.01,
+        "description": "Icon and text shadows",
+        "tooltip": "Soft shadows that separate text and symbolic icons from the content behind the panel"
+    },
+    "shadow": {
+        "type": "scale",
+        "default": 0.2,
+        "min": 0.0,
+        "max": 1.0,
+        "step": 0.01,
+        "description": "Shadow strength"
+    },
+    "highlight-radius": {
+        "type": "spinbutton",
+        "default": 10,
+        "min": 0,
+        "max": 64,
+        "step": 1,
+        "units": "px",
+        "description": "Corner radius",
+        "tooltip": "Corner radius of the highlight behind hovered, active and attention-seeking buttons"
+    },
+    "highlight-color": {
+        "type": "colorchooser",
+        "default": "rgba(255,255,255,0.16)",
+        "description": "Colour",
+        "dependency": "background=glass",
+        "tooltip": "Colour of the highlight. With the theme colour background, the theme's own highlight colours are used"
+    },
+    "round-menu": {
+        "type": "switch",
+        "default": true,
+        "description": "Round highlight for the menu button"
+    },
+    "restore-defaults": {
+        "type": "button",
+        "description": "Restore defaults",
+        "callback": "restoreDefaults"
+    },
+    "edge-buttons": {
+        "type": "switch",
+        "default": true,
+        "description": "Extend edge buttons to the screen edges",
+        "tooltip": "Clicks in the empty space around the panel go to the nearest button, so the screen corners keep working"
+    },
+    "instant-hide": {
+        "type": "switch",
+        "default": true,
+        "description": "Hide instantly when a window touches the panel",
+        "tooltip": "With an auto-hiding panel, hide as soon as a window covers it. The hide delay still applies when the pointer leaves the panel"
+    }
+}
