@@ -28,7 +28,8 @@ float bezelSlope(float x) {
 
 vec3 backdrop(vec2 px) {
     vec2 size = vec2(width, height);
-    return texture2D(tex, clamp(px, vec2(0.5), size - 0.5) / size).rgb;
+    vec2 lo = vec2(inset_x, inset_y) + 0.5;
+    return texture2D(tex, clamp(px, lo, size - lo) / size).rgb;
 }
 
 void effect_main() {

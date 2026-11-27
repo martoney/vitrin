@@ -138,6 +138,13 @@ test('isGlyphIcon takes symbolic icons and leaves colour icons alone', () => {
     assert.equal(Lib.isGlyphIcon(null, null), false);
 });
 
+test('outside drops the points a rectangle covers', () => {
+    const rect = { x: 0, y: 1057, width: 1920, height: 66 };
+    const points = [[100, 1025], [100, 1068], [2000, 1068], [100, 1056], [100, 1057]];
+    assert.deepEqual(Lib.outside(points, rect), [[100, 1025], [2000, 1068], [100, 1056]]);
+    assert.deepEqual(Lib.outside(points, { x: 0, y: 5000, width: 1, height: 1 }), points);
+});
+
 test('blurStep spreads 4 taps per sigma', () => {
     assert.equal(Lib.blurStep(3, 2), 1.5);
     assert.equal(Lib.blurStep(0, 2), 0);

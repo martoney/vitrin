@@ -62,6 +62,10 @@ function samplePoints(vertical, region, bands, count) {
     return points;
 }
 
+function outside(points, rect) {
+    return points.filter(([x, y]) => x < rect.x || x >= rect.x + rect.width || y < rect.y || y >= rect.y + rect.height);
+}
+
 function blurStep(sigma, scale) {
     return sigma * scale / 4;
 }
@@ -130,5 +134,5 @@ function glassUniforms(width, height, vertical, c, scale) {
 
 module.exports = {
     clamp, barPadding, paddingCss, extraThickness, barBox, clampToContent, dodge, blurStep, glassUniforms,
-    rgba, highlightCss, luminance, isLight, sampleBands, samplePoints, isGlyphIcon,
+    rgba, highlightCss, luminance, isLight, sampleBands, samplePoints, isGlyphIcon, outside,
 };

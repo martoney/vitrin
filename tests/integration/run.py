@@ -539,6 +539,13 @@ def run_scenario(name, tmp):
                 diffs = [dist(image.getpixel(s), wall.getpixel(s)) for s in samples]
                 if sc['wallpaper'] == 'colour':
                     checks.check(f'{tag}-glass-tints-backdrop', all(2 <= d <= 90 for d in diffs), f'diffs {diffs} at {samples}')
+                    cross = int(gap * scale)
+                    thickness = p['thickness']
+                    offsets = [cross + i for i in range(4)] + [thickness - 1 - cross - i for i in range(4)]
+                    rim = [(p['x'] + o, s[1]) if p['vertical'] else (s[0], p['y'] + o) for s in samples for o in offsets]
+                    rim_diffs = [dist(image.getpixel(pt), wall.getpixel(pt)) for pt in rim]
+                    checks.check(f'{tag}-no-colour-lines-on-rim', all(d <= 100 for d in rim_diffs),
+                                 f'worst {max(rim_diffs)} at {rim[rim_diffs.index(max(rim_diffs))]}')
                 else:
                     checks.check(f'{tag}-glass-follows-backdrop', all(d <= 60 for d in diffs), f'diffs {diffs} at {samples}')
                 if sc['wallpaper'] == 'dark':

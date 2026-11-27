@@ -273,10 +273,12 @@ function measure(panel, s, [dx, dy] = [0, 0], fade = true) {
     const scale = global.ui_scale;
     const bands = Lib.sampleBands(panel.is_vertical, { x, y, width: panel.actor.width, height: panel.actor.height },
         config.gap, config.innerPadding, scale);
+    const here = { x: ax, y: ay, width: panel.actor.width, height: panel.actor.height };
     const jobs = regions(panel).filter(box => box.width > 0 && box.height > 0).map(box => {
         const [bx, by] = box.get_transformed_position();
         const region = { x: bx + dx, y: by + dy, width: box.width, height: box.height };
-        return { box, points: Lib.samplePoints(panel.is_vertical, region, bands, SAMPLES_PER_REGION), lum: [] };
+        const points = Lib.samplePoints(panel.is_vertical, region, bands, SAMPLES_PER_REGION);
+        return { box, points: dx || dy ? Lib.outside(points, here) : points, lum: [] };
     });
     let left = jobs.reduce((n, job) => n + job.points.length, 0);
     if (!left)
