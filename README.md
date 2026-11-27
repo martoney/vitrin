@@ -4,19 +4,10 @@
 
 A Cinnamon extension that makes panels float as rounded bars, with an optional Molten Quartz background. User documentation is in [vitrin/README.md](vitrin/README.md).
 
-## Layout
-
-```
-vitrin/                          the spice, laid out as in linuxmint/cinnamon-spices-extensions
-  info.json, README.md, screenshot.png
-  files/vitrin/                  what Cinnamon installs
-    extension.js                 Cinnamon glue: panels, effects, events
-    lib.js                       pure logic shared with the unit tests
-    blur.glsl, glass.glsl        shaders
-    settings-schema.json
-tests/unit/                      node --test, for lib.js
-tests/integration/run.py         boots isolated Cinnamon sessions and exercises the extension
-```
+## Functionality
+ * Lensing effect in Molten Quartz mode.
+ * Automatically update glyph color when background content changes, to enhance readability.
+ * High degree of customization. Change margins, corner rounding and lens shader effect to make it your own.
 
 ## Development
 
@@ -27,8 +18,6 @@ make validate      # the official validate-spice script
 make integration   # virtual desktop tests
 make test          # all of the above except install
 ```
-
-Edit in the repo, then `make install`. Enable the extension once in *System Settings → Extensions*. Cinnamon caches helper modules such as `lib.js` by file size, so if a change to one doesn't show up, restart Cinnamon with Ctrl+Alt+Esc.
 
 ## Integration tests
 
