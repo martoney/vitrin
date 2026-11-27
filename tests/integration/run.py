@@ -22,15 +22,16 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
 UUID = 'vitrin'
-FILES = ROOT / 'vitrin' / 'files' / UUID
+FILES = ROOT / 'src'
 OUT = HERE / 'out'
 HIDE_DELAY = 1000
 
 DEFAULTS = dict(res=(1920, 1080), scale=1, height=40, panels={1: 'bottom'}, autohide='false',
-                show_desktop=True, wallpaper='colour', settings={})
+                show_desktop=True, wallpaper='colour', cinnamon_theme=None, settings={})
 
 SCENARIOS = {
-    '1080p-glass': dict(),
+    '1080p-glass': dict(lifecycle=True),
+    '1080p-mint-x': dict(cinnamon_theme='Mint-X'),
     '768p-theme-small': dict(res=(1366, 768), height=24, show_desktop=False, settings={'background': 'theme'}),
     '1440p-top-tall': dict(res=(2560, 1440), height=56, panels={1: 'top'}),
     '4k-hidpi-autohide': dict(res=(3840, 2160), scale=2, height=45, autohide='intel'),
@@ -165,6 +166,41 @@ global.__vt = {
         this.poll(() => this.light(p), t => global.__timing.light = t);
         p._showPanel();
     },
+    hotplug() {
+        const pm = Main.panelManager;
+        const old = pm.panels[1];
+        const s = this.mod().panels.get(old);
+        global.__hotplug = { oldBgDestroyed: false };
+        s.bg.connect('destroy', () => global.__hotplug.oldBgDestroyed = true);
+        old.destroy(false);
+        delete pm.panels[1];
+        pm.panelCount -= 1;
+        Main.layoutManager.emit('monitors-changed');
+        const fresh = pm.panels[1];
+        const fs = fresh && this.mod().panels.get(fresh);
+        Object.assign(global.__hotplug, {
+            recreated: !!fresh && fresh !== old,
+            attached: !!fs && fresh.actor.has_style_class_name('vitrin'),
+            effects: fs ? fs.bg.get_effects().length : 0,
+            tracked: this.mod().panels.size,
+            staleTracked: this.mod().panels.has(old),
+        });
+        return global.__hotplug;
+    },
+    purge() {
+        global.display.emit('gl-video-memory-purged');
+        return true;
+    },
+    runtimeSheets() {
+        const dir = GLib.get_user_runtime_dir();
+        const out = [];
+        const d = imports.gi.Gio.File.new_for_path(dir).enumerate_children('standard::name', 0, null);
+        let info;
+        while ((info = d.next_file(null)))
+            if (info.get_name().startsWith('%(uuid)s-'))
+                out.push(info.get_name());
+        return out;
+    },
     addTrayGlyph() {
         const p = this.list()[0];
         const icon = new imports.gi.St.Icon({ icon_name: 'dialog-information-symbolic', icon_size: 16 });
@@ -180,7 +216,8 @@ global.__vt = {
         item.add_style_class_name('grouped-window-list-item-demands-attention');
         const node = item.get_theme_node();
         const c = node.get_background_color();
-        const out = { radius: node.get_border_radius(imports.gi.St.Corner.TOPLEFT), gradient: node.get_background_gradient()[0],
+        const out = { themeColour: this.mod().attentionColor() !== null,
+                      radius: node.get_border_radius(imports.gi.St.Corner.TOPLEFT), gradient: node.get_background_gradient()[0],
                       background: [c.red, c.green, c.blue, c.alpha] };
         item.remove_style_class_name('grouped-window-list-item-demands-attention');
         return out;
@@ -436,6 +473,20 @@ def edge_corners(p):
     return {0: [(x0, y0), (x1, y0)], 1: [(x0, y1), (x1, y1)], 2: [(x0, y0), (x0, y1)], 3: [(x1, y0), (x1, y1)]}[p['position']]
 
 
+def bar_edges(image, wall, p):
+    """Edges of the bar on a near-black wallpaper, where the frosted glass is a little brighter than its surroundings."""
+    lum = lambda px: sum(px[:3]) / 3
+    outside = lum(wall.getpixel((p['x'], p['y'])))
+    mid_x, mid_y = p['x'] + p['width'] // 2, p['y'] + p['height'] // 2
+    inside = lum(image.getpixel((mid_x, mid_y)))
+    bright = lambda px: lum(px) > (outside + inside) / 2
+    column = [y for y in range(p['y'], p['y'] + p['height']) if bright(image.getpixel((mid_x, y)))]
+    row = [x for x in range(p['x'], p['x'] + p['width']) if bright(image.getpixel((x, mid_y)))]
+    if not column or not row:
+        return None
+    return {'top': column[0], 'bottom': column[-1], 'left': row[0], 'right': row[-1]}
+
+
 def bar_samples(p):
     """Points along the middle of the bar that no applet covers."""
     apps = p['applets']
@@ -473,6 +524,8 @@ def run_scenario(name, tmp):
         gset('org.cinnamon', 'enabled-extensions', '[]')
         gset('org.cinnamon', 'hotcorner-layout', strv(['expo:false:0', 'scale:false:0', 'scale:false:0', 'desktop:false:0']))
         gset('org.cinnamon', 'startup-animation', 'false')
+        if sc['cinnamon_theme']:
+            gset('org.cinnamon.theme', 'name', f"'{sc['cinnamon_theme']}'")
         gset('org.cinnamon.desktop.interface', 'scaling-factor', f'uint32 {sc["scale"]}')
 
         xorg, display = start_xorg(tmp, w, h)
@@ -557,6 +610,12 @@ def run_scenario(name, tmp):
                                  f'worst {max(rim_diffs)} at {rim[rim_diffs.index(max(rim_diffs))]}')
                 else:
                     checks.check(f'{tag}-glass-follows-backdrop', all(d <= 60 for d in diffs), f'diffs {diffs} at {samples}')
+                if sc['wallpaper'] == 'dark' and not p['vertical']:
+                    side = settings_value('side-margin', sc['settings'])
+                    edges = bar_edges(image, wall, p)
+                    expected_edges = {'top': p['y'] + gap * scale, 'bottom': p['y'] + p['height'] - gap * scale - 1,
+                                      'left': p['x'] + side * scale, 'right': p['x'] + p['width'] - side * scale - 1}
+                    checks.check(f'{tag}-glass-edge-position', edges == expected_edges, f'measured {edges}, expected {expected_edges}')
                 if sc['wallpaper'] == 'dark':
                     inner = int(gap * scale) + 1
                     rim = (p['x'] + inner, samples[1][1]) if p['vertical'] else (samples[1][0], p['y'] + inner)
@@ -598,8 +657,9 @@ def run_scenario(name, tmp):
         cin.eval('global.__vt.move(%d, %d)' % (w // 2, h // 2))
 
         attention = cin.eval('global.__vt.attentionStyle()')
+        filled = attention and attention['gradient'] == 0 and 180 <= attention['background'][3] <= 200
         checks.check('attention-highlight', attention and attention['radius'] == settings_value('highlight-radius', sc['settings']) * scale
-                     and attention['gradient'] == 0 and 180 <= attention['background'][3] <= 200, json.dumps(attention))
+                     and (filled if attention['themeColour'] else attention['background'][3] == 0), json.dumps(attention))
 
         expected_light = EXPECTED_LIGHT.get(sc['wallpaper']) if glass else [False, False]
         if expected_light is not None and sc['panels'][min(sc['panels'])] in ('bottom', 'top'):
@@ -724,6 +784,25 @@ def run_scenario(name, tmp):
                      and all(p['bg']['effects'] > 0 for p in restored_panels),
                      f'thickness {[p["thickness"] for p in restored_panels]}, expected {expected}, not default: {wrong}')
 
+        if sc.get('lifecycle'):
+            radius = settings_value('highlight-radius', {}) * scale
+            hot = cin.eval('global.__vt.hotplug()')
+            time.sleep(1)
+            checks.check('monitor-hotplug', hot['recreated'] and hot['attached'] and hot['effects'] == 3 and hot['oldBgDestroyed']
+                         and hot['tracked'] == 1 and not hot['staleTracked'], json.dumps(hot))
+            p = cin.eval('global.__vt.panels()')[0]
+            applet = p['applets'][-1]
+            centre = (applet['x'] + applet['width'] // 2, applet['y'] + applet['height'] // 2)
+            cin.eval('global.__vt.purge()')
+            time.sleep(0.5)
+            cin.eval('global.__vt.move(%d, %d)' % centre)
+            time.sleep(0.5)
+            style = cin.eval('global.__vt.hoverStyle(%d, %d)' % centre)
+            sheets = cin.eval('global.__vt.runtimeSheets()')
+            checks.check('styles-survive-video-memory-purge', style and style['radius'] == radius and len(sheets) == 1,
+                         f'{json.dumps(style)}, runtime stylesheets {sheets}')
+            cin.eval('global.__vt.move(%d, %d)' % (w // 2, h // 2))
+
         gset('org.cinnamon', 'enabled-extensions', '[]')
         cin.wait('global.__vt.mod() === null || global.__vt.mod().panels.size === 0', 10)
         time.sleep(1)
@@ -741,6 +820,10 @@ def run_scenario(name, tmp):
                 proc.wait(5)
             except subprocess.TimeoutExpired:
                 proc.kill()
+    log_path = tmp / 'cinnamon.log'
+    if log_path.exists():
+        ours = [line.strip() for line in log_path.read_text(errors='replace').splitlines() if f'extensions/{UUID}/' in line]
+        checks.check('no-js-errors-in-log', not ours, ' | '.join(ours[:6]))
     return checks.results
 
 

@@ -1,19 +1,14 @@
 const { Cinnamon, Clutter, GLib, GObject, Meta, St } = imports.gi;
 const Main = imports.ui.main;
-const Mainloop = imports.mainloop;
 const Settings = imports.ui.settings;
 const PanelModule = imports.ui.panel;
 const Lib = require('./lib.js');
 
 const FORWARDED = [Clutter.EventType.BUTTON_PRESS, Clutter.EventType.SCROLL];
 const POSITION_CLASS = ['panel-top', 'panel-bottom', 'panel-left', 'panel-right'];
-const LIVE_KEYS = {
-    'gap': 'gap', 'side-margin': 'sideMargin', 'inner-padding': 'innerPadding', 'radius': 'radius', 'shadow': 'shadow', 'blur': 'blur',
-    'refraction': 'refraction', 'lens-width': 'lensWidth', 'fringe': 'fringe', 'highlight': 'highlight',
-    'frost': 'frost', 'vibrancy': 'vibrancy',
-    'highlight-radius': 'highlightRadius', 'highlight-color': 'highlightColor', 'round-menu': 'roundMenu',
-    'adapt-glyphs': 'adaptGlyphs', 'glyph-shadow': 'glyphShadow',
-};
+const LIVE_KEYS = ['gap', 'side-margin', 'inner-padding', 'radius', 'shadow', 'blur', 'refraction', 'lens-width', 'fringe',
+    'highlight', 'frost', 'vibrancy', 'highlight-radius', 'highlight-color', 'round-menu', 'adapt-glyphs', 'glyph-shadow'];
+const REBUILD_KEYS = ['background', 'edge-buttons', 'instant-hide'];
 const ATTENTION_ALPHA = 0.75;
 const SAMPLES_PER_REGION = 6;
 const IDLE_INTERVAL = 1000;
@@ -21,7 +16,6 @@ const DRAG_INTERVAL = 150;
 const FADE = 70;
 const FADE_FROM = 150;
 const MEASURE_TIMEOUT = 500000;
-const REBUILD_KEYS = { 'background': 'background', 'edge-buttons': 'edgeButtons', 'instant-hide': 'instantHide' };
 
 let meta, settings, signals, pending, highlights, BlurEffect, GlassEffect;
 let tickTimer = 0, soonTimer = 0, dragging = false;
@@ -44,6 +38,8 @@ function shaderEffect(name) {
         }
 
         vfunc_paint_target(...args) {
+            const [, texWidth, texHeight] = this.get_target_size();
+            this.uniforms = Object.assign(this.uniforms ?? {}, { tex_width: texWidth, tex_height: texHeight });
             for (const key in this.uniforms)
                 this.set_uniform_float(this.get_uniform_location(key), 1, [this.uniforms[key]]);
             super.vfunc_paint_target(...args);
@@ -51,12 +47,16 @@ function shaderEffect(name) {
     });
 }
 
+function camel(key) {
+    return key.replace(/-./g, m => m[1].toUpperCase());
+}
+
 function enable() {
     settings = new Settings.ExtensionSettings(config, meta.uuid);
-    for (const [key, prop] of Object.entries(LIVE_KEYS))
-        settings.bind(key, prop, refresh);
-    for (const [key, prop] of Object.entries(REBUILD_KEYS))
-        settings.bind(key, prop, rebuild);
+    LIVE_KEYS.forEach(key => settings.bind(key, camel(key), refresh));
+    REBUILD_KEYS.forEach(key => settings.bind(key, camel(key), rebuild));
+    signals = [];
+    const on = (obj, name, fn) => signals.push([obj, obj.connect(name, fn)]);
     const repopulate = (group, actor) => {
         panels.forEach((s, panel) => s.scene && !panel._destroyed && populate(s.scene));
         soon();
@@ -72,20 +72,25 @@ function enable() {
         restartTicks();
         soon();
     };
-    signals = [
-        [global.display, global.display.connect('grab-op-begin', () => drag(true))],
-        [global.display, global.display.connect('grab-op-end', () => drag(false))],
-        [global.workspace_manager, global.workspace_manager.connect('active-workspace-changed', soon)],
-        [global.settings, global.settings.connect('changed::panels-enabled', refresh)],
-        [global.stage, global.stage.connect('captured-event', (stage, event) => release(event))],
-        [global.window_group, global.window_group.connect('actor-added', repopulate)],
-        [global.window_group, global.window_group.connect('actor-removed', () => repopulate())],
-        [global.bottom_window_group, global.bottom_window_group.connect('actor-added', repopulate)],
-        [global.bottom_window_group, global.bottom_window_group.connect('actor-removed', () => repopulate())],
-        [global.display, global.display.connect('restacked', () => repopulate())],
-        [Main.themeManager, Main.themeManager.connect('theme-set', loadHighlights)],
-    ];
-    refresh();
+    on(global.display, 'grab-op-begin', () => drag(true));
+    on(global.display, 'grab-op-end', () => drag(false));
+    on(global.display, 'restacked', () => repopulate());
+    on(global.display, 'gl-video-memory-purged', loadHighlights);
+    on(global.workspace_manager, 'active-workspace-changed', soon);
+    on(global.settings, 'changed::panels-enabled', refresh);
+    on(global.stage, 'captured-event', (stage, event) => release(event));
+    on(Main.layoutManager, 'monitors-changed', refresh);
+    on(Main.themeManager, 'theme-set', loadHighlights);
+    for (const group of [global.window_group, global.bottom_window_group]) {
+        on(group, 'actor-added', repopulate);
+        on(group, 'actor-removed', () => repopulate());
+    }
+    try {
+        refresh();
+    } catch (e) {
+        disable();
+        throw e;
+    }
     return { _uuid: meta.uuid, restoreDefaults };
 }
 
@@ -119,7 +124,7 @@ function attentionColor() {
     const [type, start] = node.get_background_gradient();
     const color = type === St.GradientType.NONE ? node.get_background_color() : start;
     probe.destroy();
-    return color.alpha ? Lib.rgba(color, ATTENTION_ALPHA) : null;
+    return color.alpha ? `rgba(${color.red}, ${color.green}, ${color.blue}, ${ATTENTION_ALPHA})` : null;
 }
 
 function loadHighlights() {
@@ -154,20 +159,24 @@ function unloadHighlights() {
 
 function refresh() {
     loadHighlights();
-    for (const panel of panels.keys())
-        if (panel._destroyed)
+    for (const [panel, s] of panels) {
+        if (panel._destroyed) {
+            detach(s, panel);
             panels.delete(panel);
+        }
+    }
     for (const panel of Main.panelManager.panels) {
         if (!panel || panel._destroyed)
             continue;
         const s = panels.get(panel) || attach(panel);
-        const padding = Lib.barPadding(panel.is_vertical, config.gap, config.sideMargin, config.innerPadding);
+        const p = Lib.barPadding(panel.is_vertical, config.gap, config.sideMargin, config.innerPadding);
         if (!s.effects) {
             s.bg.style_class = POSITION_CLASS[panel.panelPosition];
             s.bg.style = `border-radius: ${config.radius}px; box-shadow: 0 1px 6px rgba(0,0,0,${config.shadow});`;
         }
-        panel.actor.set_style(`padding: ${Lib.paddingCss(padding)}; background-color: transparent; ` +
-                              'background-image: none; box-shadow: none; border: none;');
+        panel.actor.set_style(`padding: ${p.top}px ${p.right}px ${p.bottom}px ${p.left}px; background-color: transparent; ` +
+                              'background-image: none; background-gradient-direction: none; border-image: none; ' +
+                              'box-shadow: none; border: none;');
         panel._moveResizePanel();
         s.bg.queue_relayout();
         if (!adapting(s))
@@ -233,12 +242,6 @@ function glyphs(actor, out = []) {
     return out;
 }
 
-function untag(actor) {
-    if (actor instanceof St.Icon)
-        actor.remove_style_class_name('vitrin-glyph');
-    actor.get_children().forEach(untag);
-}
-
 function measureAll() {
     panels.forEach((s, panel) => {
         if (panel._destroyed || !s.effects)
@@ -247,7 +250,7 @@ function measureAll() {
         if (busy(s) || !adapting(s) || panel._hidden || !panel.actor.visible)
             return;
         if (panel.actor.get_transition('x') || panel.actor.get_transition('y'))
-            return soon();
+            return;
         measure(panel, s);
     });
 }
@@ -294,7 +297,7 @@ function measure(panel, s, [dx, dy] = [0, 0], fade = true) {
                 if (--left || generation !== s.generation)
                     return;
                 s.measuring = 0;
-                if (s.detached || !adapting(s))
+                if (s.detached || panel._destroyed || !adapting(s))
                     return;
                 for (const { box, lum } of jobs)
                     if (lum.length)
@@ -331,7 +334,8 @@ function attach(panel) {
             s.scene.set_position(-panel.actor.x, -panel.actor.y);
             soon();
         };
-        s.ids.push(panel.actor.connect('notify::x', follow), panel.actor.connect('notify::y', follow));
+        s.ids.push(panel.actor.connect('notify::x', follow), panel.actor.connect('notify::y', follow),
+                   panel.actor.connect('transitions-completed', soon));
         follow();
     }
     panel.actor.insert_child_at_index(bg, 0);
@@ -343,10 +347,10 @@ function attach(panel) {
     if (config.edgeButtons)
         s.ids.push(panel.actor.connect('captured-event', (actor, event) => forward(actor, event)));
 
-    const extra = () => Lib.extraThickness(config.gap, config.innerPadding, global.ui_scale);
-    panel._getScaledPanelHeight = () => PanelModule.Panel.prototype._getScaledPanelHeight.call(panel) + extra();
+    const base = () => PanelModule.Panel.prototype._getScaledPanelHeight.call(panel);
+    panel._getScaledPanelHeight = () => base() + Lib.extraThickness(config.gap, config.innerPadding, global.ui_scale);
     panel._setPanelHeight = () => {
-        const height = PanelModule.setHeightForPanel(panel) - extra();
+        const height = base();
         if (height === panel.height)
             return;
         panel.height = height;
@@ -366,7 +370,7 @@ function attach(panel) {
             if (!d.hideNow)
                 return PanelModule.Panel.prototype._queueShowHidePanel.call(panel);
             if (panel._showHideTimer) {
-                Mainloop.source_remove(panel._showHideTimer);
+                GLib.source_remove(panel._showHideTimer);
                 panel._showHideTimer = 0;
             }
             panel._hidePanel();
@@ -385,27 +389,29 @@ function attach(panel) {
 
 function detach(s, panel) {
     s.detached = true;
-    if (panel._destroyed)
-        return;
     s.ids.forEach(id => panel.actor.disconnect(id));
+    if (panel._destroyed) {
+        s.bg.destroy();
+        return;
+    }
     for (const box of regions(panel)) {
         glyphs(box).forEach(item => {
             item.remove_transition('opacity');
             item.opacity = 255;
+            item.remove_style_class_name('vitrin-glyph');
         });
         setLight(panel, box, false, false);
-        untag(box);
     }
     s.bg.destroy();
     panel.actor.remove_style_class_name('vitrin');
     panel.actor.remove_style_class_name('vitrin-glass');
     if (highlights)
         panel.actor.remove_style_class_name(highlights.scope);
+    panel.actor.set_style(s.orig);
     delete panel._getScaledPanelHeight;
     delete panel._setPanelHeight;
     delete panel._queueShowHidePanel;
     delete panel._showPanel;
-    panel.actor.set_style(s.orig);
     panel._moveResizePanel();
 }
 
@@ -415,9 +421,9 @@ function allocate(panel, s, flags) {
     let box = { x1: 0, y1: 0, x2: width, y2: height };
     if (s.effects) {
         const [glass, blurY, blurX] = s.effects;
-        const step = Lib.blurStep(config.blur, scale);
-        blurX.uniforms = { width, height, dx: step, dy: 0 };
-        blurY.uniforms = { width, height, dx: 0, dy: step };
+        const step = config.blur * scale / 4;
+        blurX.uniforms = { dx: step, dy: 0 };
+        blurY.uniforms = { dx: 0, dy: step };
         blurX.enabled = blurY.enabled = step > 0;
         glass.uniforms = Lib.glassUniforms(width, height, panel.is_vertical, config, scale);
     } else {

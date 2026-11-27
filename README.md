@@ -1,8 +1,8 @@
 # Vitrin
 
-![Vitrin](vitrin/screenshot.png)
+![Vitrin](spice/screenshot.png)
 
-A Cinnamon extension that makes panels float as rounded bars, with an optional Molten Quartz background. User documentation is in [vitrin/README.md](vitrin/README.md).
+A Cinnamon extension that makes panels float as rounded bars, with an optional Molten Quartz background. User documentation is in [spice/README.md](spice/README.md).
 
 ## Functionality
  * Lensing effect in Molten Quartz mode.
@@ -21,7 +21,7 @@ make unit          # unit tests (Node 18+)
 make validate      # the official validate-spice script
 make integration   # virtual desktop tests
 make test          # all of the above except install
-make screenshot    # regenerate vitrin/screenshot.png and docs/screenshot-neon.png from a virtual desktop
+make screenshot    # regenerate spice/screenshot.png and docs/screenshot-neon.png from a virtual desktop
 ```
 
 ## Integration tests
@@ -29,12 +29,14 @@ make screenshot    # regenerate vitrin/screenshot.png and docs/screenshot-neon.p
 `tests/integration/run.py` starts, for every scenario, a private Xorg server using the dummy video driver, a private D-Bus session and a throwaway home directory, then runs Cinnamon in it. The desktop running the tests is never touched. Each scenario sets a resolution, scaling factor, panel layout, applets and Vitrin settings, and checks:
 
 - the panel grows by the gap without changing its icon size, and stays attached to its edge
-- the Molten Quartz or theme background is drawn: screen corners show the wallpaper, the bar tints it, corners are rounded
+- the Molten Quartz or theme background is drawn, also on themes with gradient panels: screen corners show the wallpaper, the bar tints it, its edges sit exactly where configured, corners are rounded
 - hover, menu and attention highlights get the configured shape and colour
 - clicks in the screen corners reach the first and last applet (or don't, when disabled)
 - an auto-hiding panel hides instantly, or after the hide delay, when a window covers it, and returns when it closes
 - settings changes apply live, and *Restore defaults* resets them, through the same D-Bus calls the settings window uses
+- panels re-created after a monitor change are picked up, and styles survive Cinnamon reloading its theme after a GPU memory purge
 - disabling the extension restores the panel exactly
+- Cinnamon's log holds no errors or warnings from the extension's files
 
 ```sh
 tests/integration/run.py --list            # scenarios

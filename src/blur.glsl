@@ -1,14 +1,14 @@
 uniform sampler2D tex;
-uniform float width;
-uniform float height;
+uniform float tex_width;
+uniform float tex_height;
 uniform float dx;
 uniform float dy;
 
 void effect_main() {
-    vec2 size = vec2(width, height);
+    vec2 texSize = vec2(tex_width, tex_height);
     vec2 uv = cogl_tex_coord_in[0].xy;
-    vec2 stepUV = vec2(dx, dy) / size;
-    vec2 lo = 0.5 / size;
+    vec2 stepUV = vec2(dx, dy) / texSize;
+    vec2 lo = 0.5 / texSize;
     vec2 hi = 1.0 - lo;
     vec3 sum = vec3(0.0);
     float total = 0.0;

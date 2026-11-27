@@ -9,10 +9,6 @@ function barPadding(vertical, gap, side, inset) {
         : { top: across, right: along, bottom: across, left: along };
 }
 
-function paddingCss(p) {
-    return `${p.top}px ${p.right}px ${p.bottom}px ${p.left}px`;
-}
-
 function extraThickness(gap, inset, scale) {
     return 2 * (gap + inset) * scale;
 }
@@ -66,10 +62,6 @@ function outside(points, rect) {
     return points.filter(([x, y]) => x < rect.x || x >= rect.x + rect.width || y < rect.y || y >= rect.y + rect.height);
 }
 
-function blurStep(sigma, scale) {
-    return sigma * scale / 4;
-}
-
 const HIGHLIGHT_STATES = [
     '.applet-box:hover', '.applet-box:checked', '.applet-cornerbar-box:hover',
     '.grouped-window-list-item-box:hover', '.grouped-window-list-item-box:focus',
@@ -79,10 +71,6 @@ const HIGHLIGHT_STATES = [
 
 const ATTENTION_STATES = ['.grouped-window-list-item-demands-attention', '.window-list-item-demands-attention'];
 const MENU_STATES = ['.applet-box.menu-cinnamon-org-applet:hover', '.applet-box.menu-cinnamon-org-applet:checked'];
-
-function rgba(color, alpha) {
-    return `rgba(${color.red}, ${color.green}, ${color.blue}, ${alpha})`;
-}
 
 const GLYPHS = ['StLabel', '.vitrin-glyph'];
 
@@ -133,6 +121,6 @@ function glassUniforms(width, height, vertical, c, scale) {
 }
 
 module.exports = {
-    clamp, barPadding, paddingCss, extraThickness, barBox, clampToContent, dodge, blurStep, glassUniforms,
-    rgba, highlightCss, luminance, isLight, sampleBands, samplePoints, isGlyphIcon, outside,
+    barPadding, extraThickness, barBox, clampToContent, dodge, glassUniforms,
+    highlightCss, luminance, isLight, sampleBands, samplePoints, isGlyphIcon, outside,
 };

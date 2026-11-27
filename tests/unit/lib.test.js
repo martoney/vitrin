@@ -1,6 +1,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const Lib = require('../../vitrin/files/vitrin/lib.js');
+const Lib = require('../../src/lib.js');
 
 test('barPadding puts the gap across the panel and the side margin along it', () => {
     assert.deepEqual(Lib.barPadding(false, 10, 20, 0), { top: 10, right: 20, bottom: 10, left: 20 });
@@ -10,10 +10,6 @@ test('barPadding puts the gap across the panel and the side margin along it', ()
 
 test('barPadding adds the inner padding on every side', () => {
     assert.deepEqual(Lib.barPadding(false, 10, 20, 4), { top: 14, right: 24, bottom: 14, left: 24 });
-});
-
-test('paddingCss orders sides like CSS', () => {
-    assert.equal(Lib.paddingCss({ top: 1, right: 2, bottom: 3, left: 4 }), '1px 2px 3px 4px');
 });
 
 test('extraThickness adds the gap and inner padding on both sides, scaled', () => {
@@ -64,10 +60,6 @@ test('dodge with no hide delay hides as soon as the pointer is gone', () => {
 });
 
 const OPTIONS = { radius: 10, color: 'rgba(255,255,255,0.16)', roundMenu: true, attention: 'rgba(240, 74, 80, 0.75)' };
-
-test('rgba formats a colour with the given alpha', () => {
-    assert.equal(Lib.rgba({ red: 240, green: 74, blue: 80 }, 0.75), 'rgba(240, 74, 80, 0.75)');
-});
 
 test('highlightCss scopes every rule to the given panel class', () => {
     const css = Lib.highlightCss('vitrin-abc', OPTIONS);
@@ -143,11 +135,6 @@ test('outside drops the points a rectangle covers', () => {
     const points = [[100, 1025], [100, 1068], [2000, 1068], [100, 1056], [100, 1057]];
     assert.deepEqual(Lib.outside(points, rect), [[100, 1025], [2000, 1068], [100, 1056]]);
     assert.deepEqual(Lib.outside(points, { x: 0, y: 5000, width: 1, height: 1 }), points);
-});
-
-test('blurStep spreads 4 taps per sigma', () => {
-    assert.equal(Lib.blurStep(3, 2), 1.5);
-    assert.equal(Lib.blurStep(0, 2), 0);
 });
 
 test('glassUniforms maps settings to shader uniforms', () => {
